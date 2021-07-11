@@ -83,6 +83,14 @@ Use pip3:
 GPG version (`pip3 install helmix[gpg]`) will require some build dependencies
 (like libgpgme-dev).
 
+You can use pipenv:
+
+    git clone https://github.com/exatel/helmix.git
+    cd helmix
+    pipenv install
+    pipenv shell
+    ./helmix ...
+
 You can also install dependencies using apt (tested on Debian Bullseye) and copy
 the file into your project, or `/usr/local/bin/helmix`:
 
