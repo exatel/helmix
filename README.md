@@ -2,7 +2,7 @@ Helmix
 ======
 A simple Kubernetes templating engine, that:
 
-- Is simpler than Helm and has simple dependencies. Goes well with k3s.
+- Is simpler than Helm and has minimal dependencies. Goes well with k3s.
 - Single python file, pip-installable if useful. Useful for air-gapped
   environments.
 - Templates are simple and conscise (jinja2), but the validation is done by the
@@ -24,8 +24,8 @@ Solution like this is so simple to write that I assume some companies might be
 using similar self-made solutions internally, or they are so unpopular that I
 wasn't able to find it.
 
-Writing it took less time than initial research, publishing took another three
-hours. Bonus features will probably take another 3h.
+Writing it took less time than the initial research, publishing took another
+three hours. Bonus features will probably take another 3h.
 
 Examples
 --------
@@ -64,6 +64,32 @@ Inspect final variables, after combining:
 
     helmix -v envs/common.yaml -v envs/test1.yaml --dump
 
+Installation
+------------
+Helmix requires:
+- Python 3 (3.9 tested)
+- Jinja2 (2.11.3 tested)
+- PyYAML (5.3.1 tested)
+- optionally Python GPGME bindings (1.14 tested) to support encrypted
+  variables.
+
+No fancy features are used so a much older versions of Python or dependencies
+should work as well.
+
+Use pip3:
+
+    pip3 install helmix
+
+GPG version (`pip3 install helmix[gpg]`) will require some build dependencies
+(like libgpgme-dev).
+
+You can also install dependencies using apt (tested on Debian Bullseye) and copy
+the file into your project, or `/usr/local/bin/helmix`:
+
+    apt install python3-jinja2 python3-yaml python3-gpg
+    sudo curl -o /usr/local/bin/helmix \
+        https://raw.githubusercontent.com/exatel/helmix/master/helmix
+    sudo chmod a+x /usr/local/bin/helmix
 
 Options
 -------
@@ -91,7 +117,6 @@ Options
       --apply               instead of printing the template, apply it using kubectl
       --kubectl KUBECTL     path to the kubectl binary, by default uses $PATH
       --context CONTEXT     kubectl context to use, by default 'default'
-
 
 Notes and TODOs
 ---------------
