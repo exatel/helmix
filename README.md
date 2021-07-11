@@ -9,6 +9,7 @@ A simple Kubernetes templating engine, that:
   kubectl during apply.
 - Handles both templates of kubernetes files and application configs.
 - Doesn't depend on a particular file structure or file formats.
+- Experimental: Handles variable files encrypted with GPG.
 
 Rationale
 ---------
@@ -101,7 +102,5 @@ Note:
 Possible todos:
 - Allow vars to be a directory of files.
 - Optional variable validation using a separate schema yaml.
-- Multiple configmaps from the template names.
 - Merging lists variables should append instead of overriding?
   Could be defined in schema file along the validation.
-- Yaml decryption using GPG.

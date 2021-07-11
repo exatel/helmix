@@ -8,13 +8,14 @@ License: GPLv3
 import os
 import sys
 import io
+import traceback as tb
 import argparse
 import subprocess
 import yaml
 import jinja2
 
 
-VERSION=(0, 1, 0)
+VERSION=(0, 1, 1)
 
 
 class HelmixException(Exception):
@@ -28,8 +29,12 @@ class Helmix:
 
     def read_vars(self, path):
         "Update template variables with a data from a YAML file"
-        with open(path, "r") as vars_file:
-            data = yaml.safe_load(vars_file)
+        if path.endswith(".gpg"):
+            handle = self._decrypt_gpg(path)
+            data = yaml.safe_load(handle)
+        else:
+            with open(path, "r") as vars_file:
+                data = yaml.safe_load(vars_file)
         self._dict_merge(self.parms, data)
 
     def _dict_merge(self, dst, src, path=""):
@@ -52,22 +57,30 @@ class Helmix:
         tmpl_dir, tmpl_name = os.path.dirname(tmpl_path), os.path.basename(tmpl_path)
 
         env = jinja2.Environment(loader=jinja2.FileSystemLoader(tmpl_dir))
+        env.undefined = jinja2.StrictUndefined
         try:
             tmpl = env.get_template(tmpl_name)
         except jinja2.exceptions.TemplateNotFound as ex:
             raise HelmixException(f"Template {tmpl_path} was not found") from ex
         except jinja2.exceptions.TemplateSyntaxError as ex:
             raise HelmixException(f"Template error {ex.name}:{ex.lineno}: {ex.message}") from ex
-        rendered = tmpl.render(**self.parms)
+        try:
+            rendered = tmpl.render(**self.parms)
+        except jinja2.exceptions.UndefinedError as ex:
+            frame = tb.extract_tb(sys.exc_info()[2])[-1]
+            msg = f"Template error in {frame.filename}:{frame.lineno}: {ex.message}"
+            msg += f"\nLine: {frame.line}"
+            raise HelmixException(msg) from ex
         return rendered
 
     @staticmethod
-    def render_configmap(namespace, config_map, data_path, data):
+    def render_configmap(namespace, config_map, rendered):
         "Render configmap using given data"
         yaml_keys = {
             'apiVersion': 'v1',
             'data': {
-                os.path.basename(data_path): data,
+                os.path.basename(data_path): data
+                for data_path, data in rendered
             },
             'kind': 'ConfigMap',
             'metadata': {
@@ -80,6 +93,20 @@ class Helmix:
         yaml.dump(yaml_keys, configmap)
         configmap.seek(0)
         return configmap.read()
+
+    @staticmethod
+    def _decrypt_gpg(path):
+        try:
+            # pylint: disable=import-outside-toplevel
+            import gpg
+        except ImportError:
+            print("GPG encrypted files require a python3-gpg GPGME module")
+            sys.exit(110)
+        decrypted = gpg.Data()
+        with open(path, "rb") as vars_file:
+            gpg.Context().decrypt(vars_file, sink=decrypted, verify=False)
+        decrypted.seek(0)
+        return decrypted
 
 
 def parse_args():
@@ -111,8 +138,6 @@ def parse_args():
         parser.error("At least one parameter file is required")
     if not args.dump and not args.templates:
         parser.error("At least one template file is required if not dumping parameters")
-    if args.config_map and len(args.templates) > 1:
-        parser.error("Use only a single template when creating a configmap")
 
     return args
 
@@ -125,7 +150,10 @@ def kubectl(args, rendered, template_path):
         "apply",
         "-f", "-"
     ]
-    process = subprocess.Popen(command, stdin=subprocess.PIPE)
+    try:
+        process = subprocess.Popen(command, stdin=subprocess.PIPE)
+    except FileNotFoundError as ex:
+        raise HelmixException(f"Unable to execute {args.kubectl}, try --kubectl option") from ex
     process.communicate(rendered.encode('utf-8'))
     if process.returncode != 0:
         print(f"Kubectl returned an error {process.returncode} for {template_path}. Exiting.")
@@ -164,8 +192,8 @@ def main():
     if args.config_map:
         # Rerender as a config-map.
         rendered_lst = [
-            (path, helmix.render_configmap(args.namespace, args.config_map, path, rendered))
-            for path, rendered in rendered_lst
+            ("configmap",
+             helmix.render_configmap(args.namespace, args.config_map, rendered_lst))
         ]
 
     for template_path, rendered in rendered_lst:
@@ -173,7 +201,11 @@ def main():
             sys.stdout.write(rendered)
             sys.stdout.write("\n")
         else:
-            kubectl(args, rendered, template_path)
+            try:
+                kubectl(args, rendered, template_path)
+            except HelmixException as ex:
+                print(ex.args[0])
+                sys.exit(102)
 
     sys.exit(0)
 
