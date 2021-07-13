@@ -34,17 +34,45 @@ class Helmix:
                 data = yaml.safe_load(vars_file)
         self._dict_merge(self.parms, data)
 
-    def _dict_merge(self, dst, src, path=""):
-        "Merge dicts recursively with some error handling"
+    def override(self, keyval):
+        "Override a variable using a key.key2=value format on CLI"
+        if '=' not in keyval:
+            raise HelmixException("When overriding variables use key=value format")
+        key, value = keyval.split("=", 1)
+        key_levels = key.split(".")
+        patch = cur = {}
+        print(keyval, key, value, key_levels)
+        for level in key_levels[:-1]:
+            cur = cur.setdefault(level, {})
+        cur[key_levels[-1]] = value
+        print("PATCH", patch)
+        self._dict_merge(self.parms, patch, coerce=True)
+
+    def _dict_merge(self, dst, src, path="", coerce=False):
+        """
+        Merge dicts recursively with some error handling.
+
+        Die if the types don't match unless coerce is True and the type can be
+        converted. This is used for specyfing values on the command line.
+        """
         for key, value in src.items():
             if key not in dst:
                 dst[key] = value
                 continue
             if not isinstance(dst[key], type(value)):
-                raise HelmixException(f"Key '{path}{key}' changes type from "
-                                      f"{type(dst[key]).__name__} to {type(value).__name__}")
+                if coerce:
+                    try:
+                        value = type(dst[key])(value)
+                    except ValueError:
+                        msg = (f"Unable to coerce value '{value}' to "
+                               f"type {type(dst[key]).__name__}")
+                        raise HelmixException(msg)
+                else:
+                    msg = (f"Key '{path}{key}' changes type from "
+                            f"{type(dst[key]).__name__} to {type(value).__name__}")
+                    raise HelmixException(msg)
             if isinstance(dst[key], dict):
-                self._dict_merge(dst[key], src[key], path=f"{path}{key}.")
+                self._dict_merge(dst[key], src[key], path=f"{path}{key}.", coerce=coerce)
             else:
                 dst[key] = value
 
@@ -89,7 +117,7 @@ class Helmix:
         configmap = io.StringIO()
         yaml.dump(yaml_keys, configmap)
         configmap.seek(0)
-        return configmap.read()
+        return '---\n' + configmap.read()
 
     @staticmethod
     def _decrypt_gpg(path):
@@ -115,6 +143,8 @@ def parse_args():
                         help="paths to variable files in order")
     parser.add_argument("--dump", action="store_true",
                         help="dump final variables")
+    parser.add_argument("-s", "--set", metavar="key=variable", type=str, action="append",
+                        help="override variable using command line")
 
     cfgs = parser.add_argument_group("Config maps")
     cfgs.add_argument("-n", "--namespace", default="default",
@@ -168,6 +198,13 @@ def main():
             helmix.read_vars(path)
     except HelmixException as ex:
         print(f"Variable aggregation from '{path}' failed with error: {ex.args[0]}")
+        sys.exit(103)
+
+    try:
+        for variable in args.set:
+            helmix.override(variable)
+    except HelmixException as ex:
+        print(f"Invalid variable override '{variable}': {ex.args[0]}")
         sys.exit(100)
 
     if args.dump:
@@ -203,7 +240,6 @@ def main():
             except HelmixException as ex:
                 print(ex.args[0])
                 sys.exit(102)
-
     sys.exit(0)
 
 

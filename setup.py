@@ -3,7 +3,7 @@ Build configuration
 """
 import setuptools
 
-VERSION=(0, 1, 1)
+VERSION=(0, 1, 2)
 
 with open("README.md", "r") as handler:
     LONG_DESC = handler.read()

@@ -137,3 +137,4 @@ Possible todos:
 - Optional variable validation using a separate schema yaml.
 - Merging lists variables should append instead of overriding?
   Could be defined in schema file along the validation.
+- Setting single keys via CLI.
