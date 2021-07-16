@@ -101,8 +101,10 @@ the file into your project, or `/usr/local/bin/helmix`:
 
 Options
 -------
-    usage: helmix [-h] [-v vars.yaml] [--dump] [-n NAMESPACE] [--config-map CONFIG_MAP]
-                  [--apply] [--kubectl KUBECTL] [--context CONTEXT] [TEMPLATE ...]
+    usage: helmix [-h] [-v vars.yaml] [--dump] [-s key=variable] [-n NAMESPACE]
+                  [--config-map CONFIG_MAP] [--apply] [--kubectl KUBECTL]
+                  [--context CONTEXT] [--dry-run DRY_RUN]
+                  [TEMPLATE ...]
 
     Simple k8s config generator
 
@@ -114,17 +116,23 @@ Options
       -v vars.yaml, --vars vars.yaml
                             paths to variable files in order
       --dump                dump final variables
+      -s key=variable, --set key=variable
+                            override variable using command line
 
     Config maps:
       -n NAMESPACE, --namespace NAMESPACE
-                            namespace for configmap
+                            namespace for the config map
       --config-map CONFIG_MAP
-                            Name of the configmap to generate from a template
+                            Name of the config map to generate from a template
 
     Instant apply:
-      --apply               instead of printing the template, apply it using kubectl
+      --apply               instead of printing the template, apply it using
+                            kubectl
       --kubectl KUBECTL     path to the kubectl binary, by default uses $PATH
       --context CONTEXT     kubectl context to use, by default 'default'
+      --dry-run DRY_RUN     use 'client' or 'server' to try configuration without
+                            persisting it
+
 
 Notes and TODOs
 ---------------

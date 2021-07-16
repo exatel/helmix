@@ -41,11 +41,9 @@ class Helmix:
         key, value = keyval.split("=", 1)
         key_levels = key.split(".")
         patch = cur = {}
-        print(keyval, key, value, key_levels)
         for level in key_levels[:-1]:
             cur = cur.setdefault(level, {})
         cur[key_levels[-1]] = value
-        print("PATCH", patch)
         self._dict_merge(self.parms, patch, coerce=True)
 
     def _dict_merge(self, dst, src, path="", coerce=False):
@@ -143,7 +141,8 @@ def parse_args():
                         help="paths to variable files in order")
     parser.add_argument("--dump", action="store_true",
                         help="dump final variables")
-    parser.add_argument("-s", "--set", metavar="key=variable", type=str, action="append",
+    parser.add_argument("-s", "--set", metavar="key=variable", type=str,
+                        action="append", default=[],
                         help="override variable using command line")
 
     cfgs = parser.add_argument_group("Config maps")
@@ -159,6 +158,8 @@ def parse_args():
                      help="path to the kubectl binary, by default uses $PATH")
     k8s.add_argument("--context", default="default",
                      help="kubectl context to use, by default 'default'")
+    k8s.add_argument("--dry-run", default="none",
+                     help="use 'client' or 'server' to try configuration without persisting it")
 
     args = parser.parse_args()
     if not args.vars:
@@ -175,7 +176,8 @@ def kubectl(args, rendered, template_path):
         args.kubectl,
         "--context", args.context,
         "apply",
-        "-f", "-"
+        "-f", "-",
+        f"--dry-run={args.dry_run}"
     ]
     try:
         process = subprocess.Popen(command, stdin=subprocess.PIPE)
@@ -188,11 +190,8 @@ def kubectl(args, rendered, template_path):
         sys.exit(process.returncode)
 
 
-def main():
-    "CLI interface for Helmix"
-    args = parse_args()
-
-    helmix = Helmix()
+def cli_read_vars(args, helmix):
+    "Read vars"
     try:
         for path in args.vars:
             helmix.read_vars(path)
@@ -210,7 +209,15 @@ def main():
     if args.dump:
         print("Final set of template variables:\n", file=sys.stderr)
         yaml.dump(helmix.parms, sys.stdout)
-        return
+        sys.exit(0)
+
+
+def main():
+    "CLI interface for Helmix"
+    args = parse_args()
+
+    helmix = Helmix()
+    cli_read_vars(args, helmix)
 
     # Render everything first.
     try:
