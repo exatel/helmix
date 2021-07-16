@@ -156,8 +156,8 @@ def parse_args():
                      help="instead of printing the template, apply it using kubectl")
     k8s.add_argument("--kubectl", default="kubectl",
                      help="path to the kubectl binary, by default uses $PATH")
-    k8s.add_argument("--context", default="default",
-                     help="kubectl context to use, by default 'default'")
+    k8s.add_argument("--context",
+                     help="kubectl context to force, (nothing by default)")
     k8s.add_argument("--dry-run", default="none",
                      help="use 'client' or 'server' to try configuration without persisting it")
 
@@ -174,11 +174,12 @@ def kubectl(args, rendered, template_path):
     "Execute kubectl to apply a rendered template"
     command = [
         args.kubectl,
-        "--context", args.context,
         "apply",
         "-f", "-",
         f"--dry-run={args.dry_run}"
     ]
+    if args.context:
+        command += ["--context", args.context]
     try:
         process = subprocess.Popen(command, stdin=subprocess.PIPE)
     except FileNotFoundError as ex:
