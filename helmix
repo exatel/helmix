@@ -79,7 +79,8 @@ class Helmix:
         tmpl_path = os.path.realpath(tmpl_path)
         tmpl_dir, tmpl_name = os.path.dirname(tmpl_path), os.path.basename(tmpl_path)
 
-        env = jinja2.Environment(loader=jinja2.FileSystemLoader(tmpl_dir))
+        env = jinja2.Environment(loader=jinja2.FileSystemLoader(tmpl_dir),
+                                 keep_trailing_newline=True)
         env.undefined = jinja2.StrictUndefined
         try:
             tmpl = env.get_template(tmpl_name)
