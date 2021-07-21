@@ -3,7 +3,7 @@ Build configuration
 """
 import setuptools
 
-VERSION=(0, 2, 1)
+VERSION=(0, 2, 2)
 
 with open("README.md", "r") as handler:
     LONG_DESC = handler.read()
@@ -30,7 +30,7 @@ setuptools.setup(
     },
     license="GPL3",
     classifiers=[
-        "Development Status :: 4 - Beta",
+        "Development Status :: 5 - Production/Stable",
         "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
         "Topic :: Software Development :: Build Tools",
     ],
